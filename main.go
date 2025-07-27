@@ -30,7 +30,11 @@ func main() {
 	}
 	fmt.Printf("Expenses: %v\n", expenses)
 
-	balances := service.CalculateBalances(expenses)
+	balances, err := service.CalculateBalances(expenses)
+	if err != nil {
+		fmt.Printf("Error calculating balances: %v\n", err)
+		return
+	}
 	fmt.Printf("Balances: %v\n", balances)
 
 	balancesCopy := make(map[string]float64, len(balances))
@@ -38,6 +42,10 @@ func main() {
 		balancesCopy[k] = v
 	}
 
-	suggestedReimbursements := service.CalculateSuggestedReimbursements(balancesCopy)
+	suggestedReimbursements, err := service.CalculateSuggestedReimbursements(balancesCopy)
+	if err != nil {
+		fmt.Printf("Error calculating suggested reimbursements: %v\n", err)
+		return
+	}
 	fmt.Printf("Suggested reimbursements: %v\n", suggestedReimbursements)
 }

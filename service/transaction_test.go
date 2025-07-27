@@ -3,6 +3,7 @@ package service_test
 import (
 	"bonscomptes/domain"
 	"bonscomptes/service"
+	"bonscomptes/util"
 	"math"
 	"testing"
 
@@ -27,7 +28,10 @@ func TestCalculateBalances_SimpleExpenses(t *testing.T) {
 		}},
 	}
 
-	balances := service.CalculateBalances(expenses)
+	balances, err := service.CalculateBalances(expenses)
+	if err != nil {
+		t.Fatalf("Expected no error, got: %v", err)
+	}
 
 	expectedBalances := map[string]float64{
 		"user1": 10.0,
@@ -38,6 +42,13 @@ func TestCalculateBalances_SimpleExpenses(t *testing.T) {
 		if balance, exists := balances[user]; !exists || round2(balance) != round2(expectedBalance) {
 			t.Errorf("Expected balance for %s: %f, got: %f", user, expectedBalance, balance)
 		}
+	}
+	totalBalance := 0.0
+	for _, balance := range balances {
+		totalBalance += balance
+	}
+	if !util.IsZero(totalBalance) {
+		t.Errorf("Total balance should be zero, got: %f", totalBalance)
 	}
 }
 
@@ -63,7 +74,10 @@ func TestCalculateBalances_ComplexExpenses(t *testing.T) {
 		}},
 	}
 
-	balances := service.CalculateBalances(expenses)
+	balances, err := service.CalculateBalances(expenses)
+	if err != nil {
+		t.Fatalf("Expected no error, got: %v", err)
+	}
 
 	expectedBalances := map[string]float64{
 		"user1": 111.173333,
@@ -75,6 +89,36 @@ func TestCalculateBalances_ComplexExpenses(t *testing.T) {
 			t.Errorf("Expected balance for %s: %f, got: %f", user, expectedBalance, balance)
 		}
 	}
+	totalBalance := 0.0
+	for _, balance := range balances {
+		totalBalance += balance
+	}
+	if !util.IsZero(totalBalance) {
+		t.Errorf("Total balance should be zero, got: %f", totalBalance)
+	}
+}
+
+func TestCalculateBalances_IncorrectRatio(t *testing.T) {
+	expenses := []domain.Expense{
+		{User: "user1", Amount: 20, SplitRatios: []domain.SplitRatio{
+			{User: "user1", Ratio: 1.0 / 3.0},
+			{User: "user2", Ratio: 4.0 / 3.0},
+			{User: "user3", Ratio: 1.0 / 3.0},
+		}},
+		{User: "user2", Amount: 10, SplitRatios: []domain.SplitRatio{
+			{User: "user1", Ratio: 1.0 / 3.0},
+			{User: "user2", Ratio: 1.0 / 3.0},
+			{User: "user3", Ratio: 1.0 / 3.0},
+		}},
+	}
+
+	balances, err := service.CalculateBalances(expenses)
+	if err == nil {
+		t.Fatal("Expected error for invalid split ratio, got none")
+	}
+	if balances != nil {
+		t.Fatal("Expected nil balances for invalid split ratio, got non-nil")
+	}
 }
 
 func TestCalculateSuggestedReimbursements(t *testing.T) {
@@ -84,7 +128,10 @@ func TestCalculateSuggestedReimbursements(t *testing.T) {
 		"user3": -139.336667,
 	}
 
-	suggestedReimbursements := service.CalculateSuggestedReimbursements(balances)
+	suggestedReimbursements, err := service.CalculateSuggestedReimbursements(balances)
+	if err != nil {
+		t.Fatalf("Expected no error, got: %v", err)
+	}
 
 	expectedResult := []domain.SuggestedReimbursement{
 		{
@@ -99,4 +146,20 @@ func TestCalculateSuggestedReimbursements(t *testing.T) {
 		},
 	}
 	assert.ElementsMatch(t, expectedResult, suggestedReimbursements)
+}
+
+func TestCalculateSuggestedReimbursements_IncorrectBalances(t *testing.T) {
+	balances := map[string]float64{
+		"user1": 100,
+		"user2": 0,
+		"user3": -20,
+	}
+
+	suggestedReimbursements, err := service.CalculateSuggestedReimbursements(balances)
+	if err == nil {
+		t.Fatal("Expected error for non-zero total balance, got none")
+	}
+	if suggestedReimbursements != nil {
+		t.Fatal("Expected nil suggested reimbursements for non-zero total balance, got non-nil")
+	}
 }
