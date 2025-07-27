@@ -1,0 +1,25 @@
+name: Hello Gif
+
+on:
+  workflow_call:
+    inputs:
+      actor:
+        required: true
+        type: string
+
+jobs:
+  hello:
+    runs-on: ubuntu-latest
+    name: Hello ${{ inputs.actor }}
+    env:
+      GIFS_URLS: |
+        {
+          "ktung": "https://media4.giphy.com/media/v1.Y2lkPTc5MGI3NjExOHo1YWk1MzZ0eXplNGlwYjdhMWdiZmY1b3ducXA5YWZ3MGJzaXZkZiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/pJmnk86fXFNmrUb8LB/giphy.gif",
+          "dependabot[bot]": "https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExZTI0MmxrbjFwaXJya21sdGNjcG13dHZja3MycTBlcjNvaHU5c2gwbiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/cFkiFMDg3iFoI/giphy.gif"
+        }
+    steps:
+      - run: |
+          GIF_URL=$(echo $GIFS_URLS | jq -r ".[\"${{ inputs.actor }}\"]")
+          if [ -n "$GIF_URL" ]; then
+            echo "![${{ inputs.actor }} gif]($GIF_URL)" >> $GITHUB_STEP_SUMMARY
+          fi

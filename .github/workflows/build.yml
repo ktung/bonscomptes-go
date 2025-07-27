@@ -1,0 +1,48 @@
+name: build
+
+on:
+  push:
+    branches:
+      - "main"
+      - "develop"
+  pull_request:
+
+jobs:
+  hello:
+    uses: ./.github/workflows/hello.yml
+    with:
+      actor: ${{ github.actor }}
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: Download Go modules
+        run: go mod download
+      - name: Build
+        run: go build .
+      - name: Test
+        run: go test ./...
+
+  dependabot:
+    needs: [build]
+    runs-on: ubuntu-latest
+    if: ${{ github.actor == 'dependabot[bot]' && github.event_name == 'pull_request'}}
+    permissions:
+      pull-requests: write
+      contents: write
+    env:
+      PR_URL: ${{github.event.pull_request.html_url}}
+      GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+    steps:
+      - id: metadata
+        uses: dependabot/fetch-metadata@v2
+        with:
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+      - run: |
+          gh pr review --approve "$PR_URL"
+          gh pr merge --squash --auto "$PR_URL"
