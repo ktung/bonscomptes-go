@@ -148,6 +148,51 @@ func TestCalculateSuggestedReimbursements(t *testing.T) {
 	assert.ElementsMatch(t, expectedResult, suggestedReimbursements)
 }
 
+func TestCalculateSuggestedReimbursementsMultipleDebtor(t *testing.T) {
+	balances := map[string]float64{
+		"user1": 111.173333,
+		"user2": -10.836666,
+		"user3": -100.336667,
+	}
+
+	suggestedReimbursements, err := service.CalculateSuggestedReimbursements(balances)
+	if err != nil {
+		t.Fatalf("Expected no error, got: %v", err)
+	}
+
+	expectedResult := []domain.SuggestedReimbursement{
+		{
+			From:   "user2",
+			To:     "user1",
+			Amount: 10.836666,
+		},
+		{
+			From:   "user3",
+			To:     "user1",
+			Amount: 100.336667,
+		},
+	}
+	assert.ElementsMatch(t, expectedResult, suggestedReimbursements)
+}
+
+func TestCalculateSuggestedReimbursements_None(t *testing.T) {
+	balances := map[string]float64{
+		"user1": 0,
+		"user2": 0,
+		"user3": 0,
+	}
+
+	suggestedReimbursements, err := service.CalculateSuggestedReimbursements(balances)
+	if err != nil {
+		t.Fatalf("Expected no error, got: %v", err)
+	}
+
+	expectedResult := []domain.SuggestedReimbursement{}
+	assert.NoError(t, err)
+	assert.Empty(t, suggestedReimbursements)
+	assert.Equal(t, expectedResult, suggestedReimbursements)
+}
+
 func TestCalculateSuggestedReimbursements_IncorrectBalances(t *testing.T) {
 	balances := map[string]float64{
 		"user1": 100,

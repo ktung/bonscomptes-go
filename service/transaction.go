@@ -32,7 +32,7 @@ func CalculateBalances(expenses []domain.Expense) (map[string]float64, error) {
 	return balances, nil
 }
 
-// max negative balance (debtor) should reimburse max positive balance (creditor)
+// least negative balance (debtor) should reimburse max positive balance (creditor)
 func CalculateSuggestedReimbursements(balances map[string]float64) ([]domain.SuggestedReimbursement, error) {
 	totalBalance := 0.0
 	for _, balance := range balances {
@@ -46,30 +46,31 @@ func CalculateSuggestedReimbursements(balances map[string]float64) ([]domain.Sug
 	for {
 		maxCreditor := ""
 		maxCreditorBalance := 0.0
-		maxDebtor := ""
-		maxDebtorBalance := 0.0
+		minDebtor := ""
+		minDebtorBalance := math.Inf(-1)
 		for User, balance := range balances {
-			if balance < maxDebtorBalance {
-				maxDebtor = User
-				maxDebtorBalance = balance
+			if balance < 0 && balance > minDebtorBalance {
+					minDebtor = User
+					minDebtorBalance = balance
 			} else if balance > maxCreditorBalance {
 				maxCreditor = User
 				maxCreditorBalance = balance
 			}
 		}
 
-		if maxCreditorBalance <= 0 || maxDebtorBalance >= 0 {
+		if maxCreditorBalance <= 0 || minDebtorBalance >= 0 {
 			break
 		}
 
+		reimbursementAmount := math.Min(maxCreditorBalance, -minDebtorBalance)
 		suggestedReimbursements = append(suggestedReimbursements, domain.SuggestedReimbursement{
-			From:   maxDebtor,
+			From:   minDebtor,
 			To:     maxCreditor,
-			Amount: maxCreditorBalance,
+			Amount: reimbursementAmount,
 		})
 
-		balances[maxCreditor] -= maxCreditorBalance
-		balances[maxDebtor] += maxCreditorBalance
+		balances[maxCreditor] -= reimbursementAmount
+		balances[minDebtor] += reimbursementAmount
 	}
 
 	return suggestedReimbursements, nil
